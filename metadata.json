@@ -1,0 +1,7 @@
+{
+  "name": "SentinelFace Admin Portal",
+  "description": "Enterprise-grade administrative interface for on-device face detection and recognition systems, featuring dynamic threshold management and real-time analytics.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
