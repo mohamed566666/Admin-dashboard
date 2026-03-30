@@ -1,14 +1,4 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import './index.css';
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -22,11 +12,15 @@ import {
   Activity,
   Lock,
   Search,
-  HelpCircle
+  HelpCircle,
+  Building2,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Login from './components/Login';
+import { ThemeToggle } from './context/ThemeContext';
+import { useAuth } from './hooks/useAuth';
+import Cookies from 'js-cookie';
 
 // Components
 import Dashboard from './components/Dashboard';
@@ -34,34 +28,67 @@ import UserManagement from './components/UserManagement';
 import Configuration from './components/Configuration';
 import SessionLogs from './components/SessionLogs';
 import ClientSimulator from './components/ClientSimulator';
+import Managers from './components/Managers';
+import Departments from './components/Departments';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type Tab = 'dashboard' | 'users' | 'enroll' | 'config' | 'active' | 'locks' | 'analytics' | 'settings' | 'simulator';
+type Tab = 'dashboard' | 'users' | 'managers' | 'departments' | 'enroll' | 'config' | 'active' | 'locks' | 'analytics' | 'settings' | 'simulator';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState({ username: '', role: '' });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const { logout, getCurrentUsername, getCurrentRole } = useAuth();
+
+  // Simple check - just see if token exists
+  useEffect(() => {
+    const token = Cookies.get('access_token');
+    if (token) {
+      setIsAuthenticated(true);
+      setCurrentUser({
+        username: getCurrentUsername() || 'User',
+        role: getCurrentRole() || 'Admin',
+      });
+    }
+    setIsLoading(false);
+  }, [getCurrentUsername, getCurrentRole]);
 
   const handleLogin = (username: string, password: string) => {
-    // For demo purposes - in production, this should call your actual authentication API
     console.log('Login attempt:', username);
-    // You can add your actual authentication logic here
     setIsAuthenticated(true);
+    setCurrentUser({
+      username: username,
+      role: 'admin',
+    });
   };
 
-  // Show login page if not authenticated
+  const handleLogout = async () => {
+    await logout();
+    setIsAuthenticated(false);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-bg-deep flex items-center justify-center">
+        <div className="size-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'users', label: 'User Management', icon: Users },
-    { id: 'enroll', label: 'User Enrollment', icon: UserPlus },
-    { id: 'config', label: 'Threshold Config', icon: Settings },
+    { id: 'users', label: 'Employees', icon: Users },
+    { id: 'managers', label: 'Managers', icon: Shield },
+    { id: 'departments', label: 'Departments', icon: Building2 },
     { id: 'active', label: 'Active Sessions', icon: Activity },
     { id: 'locks', label: 'Lock Screen Events', icon: Lock },
     { id: 'analytics', label: 'Analytics', icon: History },
@@ -78,8 +105,8 @@ export default function App() {
               <Shield className="size-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold tracking-tight text-lg leading-none">SecureFace</h1>
-              <p className="text-[10px] text-text-secondary uppercase tracking-widest mt-1">Enterprise Admin</p>
+              <h1 className="font-bold tracking-tight text-lg leading-none">Call Center Monitoring</h1>
+              <p className="text-[10px] text-text-secondary uppercase tracking-widest mt-1">Admin</p>
             </div>
           </div>
         </div>
@@ -118,17 +145,22 @@ export default function App() {
         </nav>
 
         <div className="p-6 border-t border-white/5">
-          <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
+          <div
+            onClick={handleLogout}
+            className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group"
+          >
             <div className="size-10 bg-bg-card rounded-full flex items-center justify-center border border-white/10 overflow-hidden">
               <img
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.username}`}
                 alt="Profile"
                 className="size-full object-cover"
               />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate">Alex Sterling</p>
-              <p className="text-[10px] text-text-secondary uppercase tracking-wider">Super Admin</p>
+              <p className="text-sm font-bold truncate">{currentUser.username}</p>
+              <p className="text-[10px] text-text-secondary uppercase tracking-wider capitalize">
+                {currentUser.role}
+              </p>
             </div>
             <LogOut className="size-4 text-text-secondary group-hover:text-error transition-colors" />
           </div>
@@ -137,7 +169,6 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 bg-bg-deep/50 backdrop-blur-xl z-10">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold tracking-tight">
@@ -159,6 +190,7 @@ export default function App() {
                 className="w-full pl-10 pr-4 py-2 bg-bg-card/50 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-accent/50 transition-colors"
               />
             </div>
+            <ThemeToggle />
             <button className="p-2.5 bg-bg-card border border-white/5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer relative">
               <Bell className="size-5 text-text-secondary" />
               <span className="absolute top-2 right-2 size-2 bg-accent rounded-full border-2 border-bg-card" />
@@ -169,11 +201,11 @@ export default function App() {
           </div>
         </header>
 
-        {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'users' && <UserManagement />}
-          {activeTab === 'enroll' && <UserManagement initialView="enroll" />}
+          {activeTab === 'managers' && <Managers />}
+          {activeTab === 'departments' && <Departments />}
           {activeTab === 'config' && <Configuration />}
           {activeTab === 'active' && <SessionLogs status="active" />}
           {activeTab === 'locks' && <SessionLogs status="locked" />}

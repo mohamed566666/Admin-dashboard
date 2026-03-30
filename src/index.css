@@ -5,22 +5,74 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-bg-deep: #0F0919;
-  --color-bg-card: #1A1225;
-  --color-bg-sidebar: #140D1F;
+  /* Light mode colors (default) */
+  --color-bg-deep: #F9FAFB;
+  --color-bg-card: #FFFFFF;
+  --color-bg-sidebar: #FFFFFF;
   --color-accent: #7C3AED;
   --color-accent-hover: #6D28D9;
-  --color-text-primary: #FCFBF8;
-  --color-text-secondary: #94A3B8;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-error: #EF4444;
   --color-border: rgba(124, 58, 237, 0.1);
 }
 
+/* Dark mode colors */
+.dark {
+  --color-bg-deep: #0F0919;
+  --color-bg-card: #1A1225;
+  --color-bg-sidebar: #140D1F;
+  --color-text-primary: #FCFBF8;
+  --color-text-secondary: #94A3B8;
+}
+
 @layer base {
   body {
     @apply antialiased bg-bg-deep text-text-primary;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  
+  /* Smooth transition for theme switching */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+  
+  /* Improved select styling */
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25rem;
+    padding-right: 2.5rem;
+  }
+  
+  /* Dark mode dropdown arrow */
+  .dark select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2394A3B8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  }
+  
+  /* Dropdown options styling */
+  select option {
+    background-color: var(--color-bg-card);
+    color: var(--color-text-primary);
+    padding: 0.5rem;
+  }
+  
+  /* Hover effect for selects */
+  select:hover {
+    border-color: rgba(124, 58, 237, 0.5);
+  }
+  
+  /* Focus effect for selects */
+  select:focus {
+    outline: none;
+    border-color: rgba(124, 58, 237, 0.8);
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
   }
 }
 
@@ -37,4 +89,68 @@
   .card-shadow {
     box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
   }
+  
+  /* Light mode glass effect */
+  .light .glass {
+    @apply bg-black/5 backdrop-blur-md border border-black/10;
+  }
+}
+
+/* Custom scrollbar - works in both themes */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(124, 58, 237, 0.1);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.5);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.7);
+}
+
+/* Light mode scrollbar */
+.light .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.light .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.4);
+}
+
+.light .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.6);
+}
+
+/* File input styling */
+input[type="file"]::file-selector-button {
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7C3AED;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background-color: rgba(124, 58, 237, 0.2);
+}
+
+.dark input[type="file"]::file-selector-button {
+  background-color: rgba(124, 58, 237, 0.2);
+  color: #C084FC;
+}
+
+.dark input[type="file"]::file-selector-button:hover {
+  background-color: rgba(124, 58, 237, 0.3);
 }

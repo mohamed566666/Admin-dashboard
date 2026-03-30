@@ -1,10 +1,11 @@
+// نفس الكود اللي عندك، ما فيش تغيير لأنه simulator
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Monitor, 
-  Shield, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Lock, 
+import {
+  Monitor,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Lock,
   Unlock,
   User,
   Zap,
@@ -22,23 +23,23 @@ export default function ClientSimulator() {
   const [confidence, setConfidence] = useState(0);
   const [lockCounter, setLockCounter] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
-  
+
   const addLog = (msg: string) => {
     setLogs(prev => [msg, ...prev].slice(0, 5));
   };
 
   const simulateScan = () => {
     if (status === 'locked') return;
-    
+
     setStatus('scanning');
     addLog('Initiating biometric scan...');
-    
+
     setTimeout(() => {
       const isSuccess = Math.random() > 0.3;
       const conf = isSuccess ? 0.85 + Math.random() * 0.1 : 0.2 + Math.random() * 0.3;
-      
+
       setConfidence(conf);
-      
+
       if (isSuccess) {
         setStatus('authorized');
         setLockCounter(0);
@@ -48,7 +49,7 @@ export default function ClientSimulator() {
         const newCounter = lockCounter + 1;
         setLockCounter(newCounter);
         addLog(`Verification failure: ${(conf * 100).toFixed(1)}% confidence`);
-        
+
         if (newCounter >= 3) {
           setStatus('locked');
           addLog('CRITICAL: Workstation locked due to repeated failures');
@@ -93,14 +94,14 @@ export default function ClientSimulator() {
             {/* Scanning Overlay */}
             <AnimatePresence>
               {status === 'scanning' && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="absolute inset-0 z-10"
                 >
                   <div className="absolute inset-0 border-2 border-accent/30 m-8 rounded-2xl" />
-                  <motion.div 
+                  <motion.div
                     animate={{ top: ['10%', '90%', '10%'] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                     className="absolute left-8 right-8 h-0.5 bg-accent shadow-[0_0_15px_rgba(124,58,237,0.8)] z-20"
@@ -113,7 +114,7 @@ export default function ClientSimulator() {
             {/* Status Overlays */}
             <AnimatePresence mode="wait">
               {status === 'locked' && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
@@ -122,7 +123,7 @@ export default function ClientSimulator() {
                   <Lock className="size-20 mb-6" />
                   <h4 className="text-3xl font-bold mb-2">WORKSTATION LOCKED</h4>
                   <p className="text-white/70 max-w-xs mb-8">This device has been secured due to unauthorized access attempts.</p>
-                  <button 
+                  <button
                     onClick={handleUnlock}
                     className="px-8 py-3 bg-white text-error rounded-xl font-bold hover:bg-white/90 transition-all shadow-xl"
                   >
@@ -132,7 +133,7 @@ export default function ClientSimulator() {
               )}
 
               {status === 'authorized' && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -144,7 +145,7 @@ export default function ClientSimulator() {
               )}
 
               {status === 'denied' && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -158,7 +159,7 @@ export default function ClientSimulator() {
 
             {/* Controls Overlay */}
             <div className="absolute top-6 right-6 z-20 flex gap-2">
-              <button 
+              <button
                 onClick={simulateScan}
                 disabled={status === 'scanning' || status === 'locked'}
                 className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-xl text-white hover:bg-accent transition-all disabled:opacity-30"
@@ -177,12 +178,11 @@ export default function ClientSimulator() {
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-bg-card border border-white/5 rounded-2xl p-5">
               <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1">Status</p>
-              <p className={`text-lg font-bold capitalize ${
-                status === 'authorized' ? 'text-success' :
-                status === 'denied' ? 'text-warning' :
-                status === 'locked' ? 'text-error' :
-                'text-text-primary'
-              }`}>
+              <p className={`text-lg font-bold capitalize ${status === 'authorized' ? 'text-success' :
+                  status === 'denied' ? 'text-warning' :
+                    status === 'locked' ? 'text-error' :
+                      'text-text-primary'
+                }`}>
                 {status}
               </p>
             </div>
@@ -226,14 +226,14 @@ export default function ClientSimulator() {
               Simulation Controls
             </h4>
             <div className="space-y-4">
-              <button 
+              <button
                 onClick={simulateScan}
                 disabled={status === 'scanning' || status === 'locked'}
                 className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent/90 transition-all shadow-lg shadow-accent/20 disabled:opacity-30"
               >
                 Trigger Face Recognition
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setLockCounter(2);
                   simulateScan();
@@ -243,7 +243,7 @@ export default function ClientSimulator() {
               >
                 Simulate Unauthorized User
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setStatus('idle');
                   setLockCounter(0);
