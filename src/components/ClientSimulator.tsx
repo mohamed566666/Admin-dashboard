@@ -1,4 +1,3 @@
-// نفس الكود اللي عندك، ما فيش تغيير لأنه simulator
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Monitor,
