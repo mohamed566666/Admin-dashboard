@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
-import { authService } from '../services/auth';
-import Cookies from 'js-cookie';
+import { useState, useCallback, useEffect } from "react";
+import { authService } from "../services/auth";
+import Cookies from "js-cookie";
 
 export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -9,7 +9,7 @@ export const useAuth = () => {
 
   useEffect(() => {
     const checkAuth = () => {
-      const token = Cookies.get('access_token');
+      const token = Cookies.get("access_token");
       setIsAuthenticated(!!token);
     };
     checkAuth();
@@ -18,7 +18,7 @@ export const useAuth = () => {
   const login = useCallback(async (username: string, password: string) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await authService.login({ username, password });
       setIsLoading(false);
@@ -27,7 +27,8 @@ export const useAuth = () => {
     } catch (err: any) {
       setIsLoading(false);
       setIsAuthenticated(false);
-      const message = err.response?.data?.detail || err.message || 'Login failed';
+      const message =
+        err.response?.data?.detail || err.message || "Login failed";
       setError(message);
       return { success: false, error: message };
     }
@@ -39,7 +40,7 @@ export const useAuth = () => {
       await authService.logout();
       setIsAuthenticated(false);
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -53,12 +54,17 @@ export const useAuth = () => {
     return authService.getCurrentRole();
   }, []);
 
+  const getManagerId = useCallback((): number | null => {
+    return authService.getManagerId();
+  }, []);
+
   return {
     login,
     logout,
     isAuthenticated,
     getCurrentUsername,
     getCurrentRole,
+    getManagerId,
     isLoading,
     error,
   };

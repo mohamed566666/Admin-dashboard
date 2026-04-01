@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Users,
     Plus,
@@ -42,22 +42,59 @@ export default function Managers() {
     const { execute: deleteManager, loading: deleting } = useApi<void>();
 
     const loadData = async () => {
-        // Load managers
+        console.log('👔 [Managers] === Loading Data ===');
+
+        console.log('📡 Fetching departments first...');
+        const deptsResult = await fetchDepartments(departmentsService.listDepartments());
+        if (deptsResult.success && deptsResult.data) {
+            console.log('✅ Departments loaded:', deptsResult.data.length);
+            setDepartments(deptsResult.data);
+        }
+
+        console.log('📡 Fetching managers...');
         const managersResult = await fetchManagers(managersService.listManagers());
         if (managersResult.success && managersResult.data) {
+            console.log('✅ Managers loaded:', managersResult.data.length);
             setManagers(managersResult.data);
         }
 
-        // Load departments
-        const deptsResult = await fetchDepartments(departmentsService.listDepartments());
-        if (deptsResult.success && deptsResult.data) {
-            setDepartments(deptsResult.data);
-        }
+        console.log('👔 [Managers] === Loading Complete ===');
     };
 
     useEffect(() => {
         loadData();
     }, []);
+
+    const departmentNamesMap = useMemo(() => {
+        const map = new Map<number, string>();
+        departments.forEach(dept => {
+            if (dept?.id) map.set(dept.id, dept.name || 'Unknown');
+        });
+        return map;
+    }, [departments]);
+
+    const getDepartmentName = (deptId: number | null | undefined) => {
+        if (!deptId) return 'Unassigned';
+        return departmentNamesMap.get(deptId) || 'Unknown';
+    };
+
+    const getRoleColor = (role: string) => {
+        switch (role) {
+            case 'admin': return 'bg-error/10 text-error';
+            case 'manager': return 'bg-accent/10 text-accent';
+            default: return 'bg-white/10 text-text-secondary';
+        }
+    };
+
+    const filteredManagers = useMemo(() => {
+        return managers.filter(manager => {
+            const matchesSearch = manager.username.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesDept = selectedDepartment === 'all' ||
+                (selectedDepartment === 'unassigned' && !manager.department_id) ||
+                manager.department_id?.toString() === selectedDepartment;
+            return matchesSearch && matchesDept;
+        });
+    }, [managers, searchTerm, selectedDepartment]);
 
     const handleOpenModal = (manager?: UserResponse) => {
         if (manager) {
@@ -115,37 +152,13 @@ export default function Managers() {
         }
     };
 
-    const getDepartmentName = (deptId: number | null | undefined) => {
-        if (!deptId) return 'Unassigned';
-        const dept = departments.find(d => d.id === deptId);
-        return dept?.name || 'Unknown';
-    };
-
-    const getRoleColor = (role: string) => {
-        switch (role) {
-            case 'admin': return 'bg-error/10 text-error';
-            case 'manager': return 'bg-accent/10 text-accent';
-            default: return 'bg-white/10 text-text-secondary';
-        }
-    };
-
-    const filteredManagers = managers.filter(manager => {
-        const matchesSearch = manager.username.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesDept = selectedDepartment === 'all' ||
-            (selectedDepartment === 'unassigned' && !manager.department_id) ||
-            manager.department_id?.toString() === selectedDepartment;
-        return matchesSearch && matchesDept;
-    });
-
     return (
         <div className="space-y-8 max-w-7xl mx-auto">
-            {/* Header */}
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div>
                     <h3 className="text-2xl font-bold tracking-tight">Managers Management</h3>
                     <p className="text-sm text-text-secondary">Add, edit, and manage call center managers</p>
                 </div>
-
                 <button
                     onClick={() => handleOpenModal()}
                     className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent/90 transition-all shadow-lg shadow-accent/20"
@@ -155,7 +168,6 @@ export default function Managers() {
                 </button>
             </div>
 
-            {/* Filters */}
             <div className="bg-bg-card border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-text-secondary" />
@@ -183,7 +195,6 @@ export default function Managers() {
                 </div>
             </div>
 
-            {/* Managers Table */}
             {loadingList ? (
                 <div className="flex items-center justify-center py-12">
                     <div className="size-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
@@ -211,7 +222,7 @@ export default function Managers() {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-bold">{manager.username}</p>
-                                                    <p className="text-[10px] text-text-secondary">ID: {manager.id}</p>
+                                                    {/* <p className="text-[10px] text-text-secondary">ID: {manager.id}</p> */}
                                                 </div>
                                             </div>
                                         </td>
@@ -261,7 +272,6 @@ export default function Managers() {
                 </div>
             )}
 
-            {/* Add/Edit Modal */}
             <AnimatePresence>
                 {isModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -296,11 +306,8 @@ export default function Managers() {
                             </div>
 
                             <div className="p-6 space-y-5">
-                                {/* Username */}
                                 <div>
-                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
-                                        Username *
-                                    </label>
+                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Username *</label>
                                     <input
                                         type="text"
                                         value={formData.username}
@@ -310,12 +317,9 @@ export default function Managers() {
                                     />
                                 </div>
 
-                                {/* Password */}
                                 {!editingManager && (
                                     <div>
-                                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
-                                            Password *
-                                        </label>
+                                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Password *</label>
                                         <div className="relative">
                                             <input
                                                 type={showPassword ? 'text' : 'password'}
@@ -335,12 +339,8 @@ export default function Managers() {
                                     </div>
                                 )}
 
-                                {/* Department */}
-                                {/* Department */}
                                 <div>
-                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
-                                        Department
-                                    </label>
+                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Department</label>
                                     <select
                                         value={formData.department_id}
                                         onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
@@ -355,9 +355,7 @@ export default function Managers() {
                                         ))}
                                     </select>
                                     {departments.length === 0 && (
-                                        <p className="text-xs text-warning mt-1">
-                                            No departments available. Please add departments first.
-                                        </p>
+                                        <p className="text-xs text-warning mt-1">No departments available. Please add departments first.</p>
                                     )}
                                 </div>
                             </div>

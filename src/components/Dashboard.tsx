@@ -7,7 +7,10 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
-  MoreHorizontal
+  MoreHorizontal,
+  RefreshCw,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import {
   AreaChart,
@@ -25,6 +28,7 @@ import { employeesService } from '../services/employees';
 import { sessionsService } from '../services/sessions';
 import { EmployeeResponse, SessionResponse } from '../services/types';
 import { useApi } from '../hooks/useApi';
+import { useWebSocket } from '../context/WebSocketContext';
 
 interface StatCardProps {
   title: string;
@@ -71,36 +75,75 @@ export default function Dashboard() {
     totalWorkedHours: 0,
     onlineUsers: 0,
   });
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   const { execute: fetchEmployees } = useApi<EmployeeResponse[]>();
   const { execute: fetchSessions } = useApi<SessionResponse[]>();
+  const { isConnected, onSessionOpened, onSessionClosed } = useWebSocket();
 
+  const loadData = async () => {
+    console.log('[Dashboard] Loading data...');
+    const empResult = await fetchEmployees(employeesService.listEmployees());
+    if (empResult.success && empResult.data) {
+      setEmployees(empResult.data);
+      const totalHours = empResult.data.reduce((sum, emp) => sum + emp.worked_hours, 0);
+      const onlineUsers = empResult.data.filter(emp => emp.is_online).length;
+      setStats(prev => ({
+        ...prev,
+        totalEmployees: empResult.data.length,
+        totalWorkedHours: totalHours,
+        onlineUsers: onlineUsers,
+      }));
+    }
+
+    const sessionsResult = await fetchSessions(sessionsService.listAllSessions());
+    if (sessionsResult.success && sessionsResult.data) {
+      setSessions(sessionsResult.data);
+      const activeSessions = sessionsResult.data.filter(s => !s.logout_time).length;
+      setStats(prev => ({ ...prev, activeSessions }));
+    }
+
+    setLastUpdated(new Date());
+  };
+
+  // Real-time updates via WebSocket
   useEffect(() => {
-    const loadData = async () => {
-      const empResult = await fetchEmployees(employeesService.listEmployees());
-      if (empResult.success && empResult.data) {
-        setEmployees(empResult.data);
-        const totalHours = empResult.data.reduce((sum, emp) => sum + emp.worked_hours, 0);
-        const onlineUsers = empResult.data.filter(emp => emp.is_online).length;
-        setStats(prev => ({
-          ...prev,
-          totalEmployees: empResult.data.length,
-          totalWorkedHours: totalHours,
-          onlineUsers: onlineUsers,
-        }));
-      }
-
-      const sessionsResult = await fetchSessions(sessionsService.listAllSessions());
-      if (sessionsResult.success && sessionsResult.data) {
-        setSessions(sessionsResult.data);
-        const activeSessions = sessionsResult.data.filter(s => !s.logout_time).length;
-        setStats(prev => ({ ...prev, activeSessions }));
-      }
-    };
     loadData();
-  }, []);
 
-  // Mock data for charts (replace with real API data)
+    const unsubscribeOpen = onSessionOpened((data: any) => {
+      console.log('[Dashboard] 🔴 New session opened via WebSocket:', data);
+      setStats(prev => ({ ...prev, activeSessions: prev.activeSessions + 1 }));
+
+      const newSession: SessionResponse = {
+        id: data.session_id,
+        employee_id: data.employee_id,
+        login_time: data.timestamp,
+        logout_time: null,
+        end_reason: null,
+      };
+      setSessions(prev => [newSession, ...prev]);
+      setForceUpdate(prev => prev + 1);
+    });
+
+    const unsubscribeClose = onSessionClosed((data: any) => {
+      console.log('[Dashboard] 🔵 Session closed via WebSocket:', data);
+      setStats(prev => ({ ...prev, activeSessions: prev.activeSessions - 1 }));
+      setSessions(prev => prev.map(session =>
+        session.id === data.session_id
+          ? { ...session, logout_time: data.timestamp, end_reason: data.reason }
+          : session
+      ));
+      setForceUpdate(prev => prev + 1);
+    });
+
+    return () => {
+      unsubscribeOpen();
+      unsubscribeClose();
+    };
+  }, [onSessionOpened, onSessionClosed]);
+
+  // Mock data for charts
   const verificationData = [
     { time: '08:00', total: 120, success: 115 },
     { time: '10:00', total: 450, success: 442 },
@@ -127,6 +170,30 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
+      {/* Header with status */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+          <p className="text-sm text-text-secondary">Real-time system overview</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs ${isConnected ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+            {isConnected ? <Wifi className="size-3" /> : <WifiOff className="size-3" />}
+            <span className="font-medium">{isConnected ? 'Live' : 'Reconnecting...'}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm hover:bg-white/10 transition-colors"
+          >
+            <RefreshCw className="size-4" />
+            Refresh
+          </button>
+          <span className="text-[10px] text-text-secondary">
+            Last updated: {lastUpdated.toLocaleTimeString()}
+          </span>
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard

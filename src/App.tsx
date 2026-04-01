@@ -19,6 +19,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Login from './components/Login';
 import { ThemeToggle } from './context/ThemeContext';
+import { WebSocketProvider } from './context/WebSocketContext';
 import { useAuth } from './hooks/useAuth';
 import Cookies from 'js-cookie';
 
@@ -37,29 +38,46 @@ function cn(...inputs: ClassValue[]) {
 
 type Tab = 'dashboard' | 'users' | 'managers' | 'departments' | 'enroll' | 'config' | 'active' | 'locks' | 'analytics' | 'settings' | 'simulator';
 
-export default function App() {
+function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState({ username: '', role: '' });
   const [isLoading, setIsLoading] = useState(true);
 
-  const { logout, getCurrentUsername, getCurrentRole } = useAuth();
+  const { logout, getCurrentUsername, getCurrentRole, getManagerId } = useAuth();
 
-  // Simple check - just see if token exists
   useEffect(() => {
     const token = Cookies.get('access_token');
+    console.log('[App] Checking auth, token exists:', !!token);
+    console.log('[App] localStorage before:', {
+      manager_id: localStorage.getItem('manager_id'),
+      username: localStorage.getItem('username')
+    });
+
     if (token) {
+      // Make sure manager_id is set
+      let managerId = getManagerId();
+      if (!managerId) {
+        console.log('[App] Setting default manager_id to 1');
+        localStorage.setItem('manager_id', '1');
+        managerId = 1;
+      }
+
+      console.log('[App] Setting authenticated with manager_id:', managerId);
       setIsAuthenticated(true);
       setCurrentUser({
         username: getCurrentUsername() || 'User',
         role: getCurrentRole() || 'Admin',
       });
+    } else {
+      console.log('[App] No token, not authenticated');
+      setIsAuthenticated(false);
     }
     setIsLoading(false);
-  }, [getCurrentUsername, getCurrentRole]);
+  }, [getCurrentUsername, getCurrentRole, getManagerId]);
 
   const handleLogin = (username: string, password: string) => {
-    console.log('Login attempt:', username);
+    console.log('[App] Login successful:', username);
     setIsAuthenticated(true);
     setCurrentUser({
       username: username,
@@ -89,8 +107,10 @@ export default function App() {
     { id: 'users', label: 'Employees', icon: Users },
     { id: 'managers', label: 'Managers', icon: Shield },
     { id: 'departments', label: 'Departments', icon: Building2 },
-    { id: 'active', label: 'Active Sessions', icon: Activity },
-    { id: 'locks', label: 'Lock Screen Events', icon: Lock },
+    // { id: 'enroll', label: 'User Enrollment', icon: UserPlus },
+    // { id: 'config', label: 'Configurations', icon: Settings },
+    { id: 'active', label: 'Sessions', icon: Activity },
+    // { id: 'locks', label: 'Lock Screen Events', icon: Lock },
     { id: 'analytics', label: 'Analytics', icon: History },
     { id: 'simulator', label: 'Client Simulator', icon: Monitor },
   ];
@@ -105,8 +125,8 @@ export default function App() {
               <Shield className="size-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold tracking-tight text-lg leading-none">Call Center Monitoring</h1>
-              <p className="text-[10px] text-text-secondary uppercase tracking-widest mt-1">Admin</p>
+              <h1 className="font-bold tracking-tight text-lg leading-none">SecureFace</h1>
+              <p className="text-[10px] text-text-secondary uppercase tracking-widest mt-1">Enterprise Admin</p>
             </div>
           </div>
         </div>
@@ -139,7 +159,7 @@ export default function App() {
               )}
             >
               <Settings className="size-5" />
-              <span className="font-medium">System Settings</span>
+              <span className="font-medium">Configuration Settings</span>
             </button>
           </div>
         </nav>
@@ -206,14 +226,23 @@ export default function App() {
           {activeTab === 'users' && <UserManagement />}
           {activeTab === 'managers' && <Managers />}
           {activeTab === 'departments' && <Departments />}
+          {/* {activeTab === 'enroll' && <UserManagement initialView="enroll" />} */}
           {activeTab === 'config' && <Configuration />}
           {activeTab === 'active' && <SessionLogs status="active" />}
-          {activeTab === 'locks' && <SessionLogs status="locked" />}
+          {/* {activeTab === 'locks' && <SessionLogs status="locked" />} */}
           {activeTab === 'analytics' && <Dashboard />}
           {activeTab === 'simulator' && <ClientSimulator />}
           {activeTab === 'settings' && <Configuration />}
         </div>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <WebSocketProvider>
+      <AppContent />
+    </WebSocketProvider>
   );
 }

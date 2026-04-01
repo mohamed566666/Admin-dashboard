@@ -7,35 +7,65 @@ import {
     Search,
     X,
     Save,
-    Layers
+    Layers,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { departmentsService } from '../services/departments';
-import { DepartmentResponse } from '../services/types';
+import { DepartmentResponse, PaginatedResponse } from '../services/types';
 import { useApi } from '../hooks/useApi';
 
 export default function Departments() {
     const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
+
+    // ✅ Pagination State
+    const [pagination, setPagination] = useState({
+        page: 1,
+        pageSize: 5,
+        total: 0,
+        totalPages: 0
+    });
+
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDept, setEditingDept] = useState<DepartmentResponse | null>(null);
     const [formName, setFormName] = useState('');
 
-    const { execute: fetchDepartments, loading: loadingList } = useApi<DepartmentResponse[]>();
+    // ✅ Type: PaginatedResponse<DepartmentResponse> عشان الـ listDepartmentsPaginated
+    const { execute: fetchDepartments, loading: loadingList } = useApi<PaginatedResponse<DepartmentResponse>>();
     const { execute: createDept, loading: creating } = useApi<DepartmentResponse>();
     const { execute: updateDept, loading: updating } = useApi<DepartmentResponse>();
     const { execute: deleteDept, loading: deleting } = useApi<void>();
 
+    // ✅ استبدل الـ loadDepartments function باللي تحت:
+
     const loadDepartments = async () => {
-        const result = await fetchDepartments(departmentsService.listDepartments());
+        console.log('🏢 [Departments] === Loading Departments ===');
+
+        const result = await fetchDepartments(
+            departmentsService.listDepartmentsPaginated(pagination.page, pagination.pageSize)
+        );
+
         if (result.success && result.data) {
-            setDepartments(result.data);
+            console.log('✅ Departments loaded:', result.data.data.length);
+            setDepartments(result.data.data);
+            setPagination(prev => ({
+                ...prev,
+                total: result.data!.total,
+                totalPages: result.data!.total_pages
+            }));
+        } else {
+            console.error('❌ Failed to load departments:', result.error);
+            setDepartments([]);
         }
     };
 
     useEffect(() => {
         loadDepartments();
-    }, []);
+    }, [pagination.page, pagination.pageSize]);
 
     const handleOpenModal = (dept?: DepartmentResponse) => {
         if (dept) {
@@ -53,11 +83,8 @@ export default function Departments() {
             alert('Please enter department name');
             return;
         }
-
         if (editingDept) {
-            const result = await updateDept(
-                departmentsService.renameDepartment(editingDept.id, formName)
-            );
+            const result = await updateDept(departmentsService.renameDepartment(editingDept.id, formName));
             if (result.success) {
                 await loadDepartments();
                 setIsModalOpen(false);
@@ -90,6 +117,132 @@ export default function Departments() {
         dept.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // ✅ Pagination Handlers
+    const goToPage = (page: number) => {
+        if (page >= 1 && page <= pagination.totalPages) {
+            setPagination(prev => ({ ...prev, page }));
+        }
+    };
+
+    const changePageSize = (newSize: number) => {
+        setPagination({
+            page: 1,
+            pageSize: newSize,
+            total: pagination.total,
+            totalPages: pagination.totalPages
+        });
+    };
+
+    const renderPagination = () => {
+        if (pagination.totalPages <= 1) return null;
+
+        const maxVisible = 5;
+        let start = Math.max(1, pagination.page - Math.floor(maxVisible / 2));
+        let end = Math.min(pagination.totalPages, start + maxVisible - 1);
+
+        if (end - start < maxVisible - 1) {
+            start = Math.max(1, end - maxVisible + 1);
+        }
+
+        return (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-white/5">
+                <div className="text-xs text-text-secondary">
+                    Showing {(pagination.page - 1) * pagination.pageSize + 1} to{' '}
+                    {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total} results
+                </div>
+                <div className="flex items-center gap-2">
+                    {/* Page Size Selector */}
+                    <select
+                        value={pagination.pageSize}
+                        onChange={(e) => changePageSize(Number(e.target.value))}
+                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-accent"
+                    >
+                        <option value={5}>5 / page</option>
+                        <option value={10}>10 / page</option>
+                        <option value={25}>25 / page</option>
+                        <option value={50}>50 / page</option>
+                    </select>
+
+                    <div className="flex items-center gap-1">
+                        {/* First Page */}
+                        <button
+                            onClick={() => goToPage(1)}
+                            disabled={pagination.page === 1}
+                            className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                            <ChevronsLeft className="size-4" />
+                        </button>
+
+                        {/* Previous Page */}
+                        <button
+                            onClick={() => goToPage(pagination.page - 1)}
+                            disabled={pagination.page === 1}
+                            className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                            <ChevronLeft className="size-4" />
+                        </button>
+
+                        {/* Page Numbers */}
+                        {start > 1 && (
+                            <>
+                                <button
+                                    onClick={() => goToPage(1)}
+                                    className="size-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors text-sm"
+                                >
+                                    1
+                                </button>
+                                {start > 2 && <span className="px-2 text-text-secondary">...</span>}
+                            </>
+                        )}
+
+                        {Array.from({ length: end - start + 1 }, (_, i) => start + i).map((page) => (
+                            <button
+                                key={page}
+                                onClick={() => goToPage(page)}
+                                className={`size-8 flex items-center justify-center rounded-lg transition-colors text-sm font-medium ${page === pagination.page
+                                    ? 'bg-accent text-white'
+                                    : 'hover:bg-white/5'
+                                    }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+
+                        {end < pagination.totalPages && (
+                            <>
+                                {end < pagination.totalPages - 1 && <span className="px-2 text-text-secondary">...</span>}
+                                <button
+                                    onClick={() => goToPage(pagination.totalPages)}
+                                    className="size-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors text-sm"
+                                >
+                                    {pagination.totalPages}
+                                </button>
+                            </>
+                        )}
+
+                        {/* Next Page */}
+                        <button
+                            onClick={() => goToPage(pagination.page + 1)}
+                            disabled={pagination.page === pagination.totalPages}
+                            className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                            <ChevronRight className="size-4" />
+                        </button>
+
+                        {/* Last Page */}
+                        <button
+                            onClick={() => goToPage(pagination.totalPages)}
+                            disabled={pagination.page === pagination.totalPages}
+                            className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                            <ChevronsRight className="size-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-8 max-w-7xl mx-auto">
             {/* Header */}
@@ -98,7 +251,6 @@ export default function Departments() {
                     <h3 className="text-2xl font-bold tracking-tight">Departments</h3>
                     <p className="text-sm text-text-secondary">Manage call center departments</p>
                 </div>
-
                 <button
                     onClick={() => handleOpenModal()}
                     className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent/90 transition-all shadow-lg shadow-accent/20"
@@ -128,46 +280,49 @@ export default function Departments() {
                     <div className="size-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredDepartments.map((dept) => (
-                        <motion.div
-                            key={dept.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-bg-card border border-white/5 rounded-2xl p-6 hover:border-accent/30 transition-all group"
-                        >
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-accent/10 rounded-xl">
-                                    <Building2 className="size-6 text-accent" />
+                <div className="bg-bg-card border border-white/5 rounded-2xl overflow-hidden">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                        {filteredDepartments.map((dept) => (
+                            <motion.div
+                                key={dept.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-white/5 border border-white/5 rounded-2xl p-6 hover:border-accent/30 transition-all group"
+                            >
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="p-3 bg-accent/10 rounded-xl">
+                                        <Building2 className="size-6 text-accent" />
+                                    </div>
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => handleOpenModal(dept)}
+                                            className="p-2 hover:bg-white/5 rounded-lg transition-colors text-text-secondary hover:text-accent"
+                                        >
+                                            <Edit2 className="size-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(dept.id, dept.name)}
+                                            disabled={deleting}
+                                            className="p-2 hover:bg-white/5 rounded-lg transition-colors text-text-secondary hover:text-error"
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={() => handleOpenModal(dept)}
-                                        className="p-2 hover:bg-white/5 rounded-lg transition-colors text-text-secondary hover:text-accent"
-                                    >
-                                        <Edit2 className="size-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(dept.id, dept.name)}
-                                        disabled={deleting}
-                                        className="p-2 hover:bg-white/5 rounded-lg transition-colors text-text-secondary hover:text-error"
-                                    >
-                                        <Trash2 className="size-4" />
-                                    </button>
-                                </div>
-                            </div>
+                                <h4 className="text-lg font-bold mb-2">{dept.name}</h4>
+                            </motion.div>
+                        ))}
+                    </div>
 
-                            <h4 className="text-lg font-bold mb-2">{dept.name}</h4>
-                            {/* <p className="text-xs text-text-secondary">ID: {dept.id}</p> */}
-                        </motion.div>
-                    ))}
-                </div>
-            )}
+                    {filteredDepartments.length === 0 && (
+                        <div className="text-center py-12">
+                            <Layers className="size-12 text-text-secondary mx-auto mb-3 opacity-50" />
+                            <p className="text-text-secondary">No departments found</p>
+                        </div>
+                    )}
 
-            {filteredDepartments.length === 0 && !loadingList && (
-                <div className="text-center py-12">
-                    <Layers className="size-12 text-text-secondary mx-auto mb-3 opacity-50" />
-                    <p className="text-text-secondary">No departments found</p>
+                    {/* ✅ Pagination Component */}
+                    {renderPagination()}
                 </div>
             )}
 

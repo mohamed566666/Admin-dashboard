@@ -1,3 +1,11 @@
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 // ============ Base Types ============
 export interface ApiError {
   message: string;
@@ -16,6 +24,8 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
   role: string;
+  user_id: number;
+  department_id?: number | null;
 }
 
 export interface RefreshRequest {
@@ -128,4 +138,24 @@ export interface CompareResponse {
   match: boolean;
   similarity: number;
   threshold_used: number;
+}
+
+export interface ConfigResponse {
+  similarity_threshold: number;
+  lock_threshold: number;
+  detection_interval: number;
+  no_face_penalty: number;
+  auto_unlock: boolean;
+  enhanced_liveness: boolean;
+  updated_at: string;
+  updated_by: number | null;
+}
+
+export interface ConfigUpdateRequest {
+  similarity_threshold?: number;
+  lock_threshold?: number;
+  detection_interval?: number;
+  no_face_penalty?: number;
+  auto_unlock?: boolean;
+  enhanced_liveness?: boolean;
 }
